@@ -1,0 +1,41 @@
+# One command to run everything locally:  docker compose up --build
+#
+#   http://localhost:8080  -> the catalogue (React, served by nginx)
+#   http://localhost:4000  -> the API (direct, for poking with curl)
+#   http://localhost:8025  -> Mailpit: the fake "sales inbox" where enquiry emails land
+#
+# Every setting has a working default. To override, copy .env.example to .env.
+
+services:
+  web:
+    build: ./frontend
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build: ./backend
+    ports:
+      - "${API_PORT:-4000}:4000"
+    environment:
+      PORT: 4000
+      PRODUCT_SOURCE_URL: ${PRODUCT_SOURCE_URL:-https://fakestoreapi.com}
+      PRODUCT_CACHE_TTL_SECONDS: ${PRODUCT_CACHE_TTL_SECONDS:-300}
+      FEATURED_PRODUCT_IDS: ${FEATURED_PRODUCT_IDS:-1,5,9,13,18}
+      TOP_RATED_PER_CATEGORY: ${TOP_RATED_PER_CATEGORY:-3}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_SECURE: "false"
+      MAIL_FROM: ${MAIL_FROM:-Catalogue <no-reply@catalogue.local>}
+      SALES_INBOX: ${SALES_INBOX:-sales@catalogue.local}
+      ENQUIRY_RATE_LIMIT_PER_MINUTE: ${ENQUIRY_RATE_LIMIT_PER_MINUTE:-5}
+    depends_on:
+      - mailpit
+
+  # Free local SMTP server + web inbox. Stands in for SES/SendGrid in production.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
